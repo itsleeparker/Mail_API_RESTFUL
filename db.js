@@ -6,6 +6,7 @@ const dbSchema = new mongoose.Schema({
 	rec 	: String,		//Receiver
 	sub 	: String,		//Subjet of the email
 	message : String,		//Message to be sent
+	ms : Number,
 	date   	: Date 		//Date to be executed on
 })
 
