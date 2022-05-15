@@ -7,7 +7,7 @@ function dataHandler(){
 		add :  (arr)=>{
 			for(var i in arr){
 				publishQuene.enque(arr[i]);
-			}	
+			}
 
 		},
 		delete : ()=>{

@@ -1,26 +1,38 @@
 //Import all the features here 
 const DB = require("../db").db;
 const data  = require("../Features/Datahandler").data;
-const publishQuene = require("../Features/Quene").quene;	
-const moment = require("moment")
-const preciseDiff = require("moment-precise-range-plugin");
+const publishQuene = require("../Features/Quene").quene;
+const dayjs = require("dayjs");
+var utc = require('dayjs/plugin/utc')
+var timezone = require('dayjs/plugin/timezone') // dependent on utc plugin
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
-const getSeconds = (date2)=>{
-	const d1 = moment();
-	const d2 = moment(date2);
-	const diff = moment.preciseDiff(d2 , d1 ,true);
-	console.log(diff);
-	console.log(diff.seconds * 1000);
-}	
+const getMilliSeconds = (date)=>{
+	const newDate = dayjs(date);
+	const cDate = dayjs(new Date()).tz("Asia/Kolkata");
+	console.log("Current time  ", cDate.format());
+	const diff = newDate.diff(cDate);
+	return diff;
+}
 
-//Function to take a data from database and put it inside the quene sorted by date
-const refreshQuene = async()=>{
+const deleteDb = (queneId)=>{
+	 DB.deleteOne({_id : queneId} , (err , results)=>{
+		if(!err){
+			return true;
+		}else{
+			return false;
+		}
+	})
+}
+
+const refreshQuene = ()=>{
 	//Delete all data from the quene if any 
-	if(publishQuene.size() !== 0){
+	if(publishQuene.size() > 0){
 		data.delete();
 	}
 	//Fetch data from api and refresh the entry in quene 
-	DB.find({}).sort({date : 1}).exec((err , results)=>{
+	 DB.find({}).sort({date : 1}).exec((err , results)=>{
 		if(results){
 			data.add(results);			
 			trigger();				//After adding all the request to quene add trigger the request 
@@ -33,33 +45,36 @@ const refreshQuene = async()=>{
 //Start Code from  here
 const triggerMail = ()=>{
 	return new Promise((resolve  , reject)=>{
-	  if(publishQuene.isEmpty()){
-	  	 console.log("Quene is emptyy");
-	  	 return;
-	  }		
-  	  var {sender ,  sub , rec , message , date , ms} = publishQuene.denque();
- 	  console.log(ms);
+	  if(publishQuene.size() <=0){
+	  	reject(new Error("Qune is empty"));
+	  }			
+  	  var quene = publishQuene.denque();
   	  setTimeout(()=>{
-  	  	console.log("Its Time");		//Replace this with mailer
-  	  	resolve();						//Problem resolved
-  	  },ms);
+  	  	console.log(`${quene.message}`);		//Replace this with mailer
+  	  	if(deleteDb(quene._id)){
+  	  		reject(new Error("Error While deleting the data"));
+  	  	}else{
+			resolve(trigger);					//Problem resolved
+  	  	}
+  	  },quene.ms);
 	})
-
 }
 
 
-const trigger = async ()=>{
+const trigger = ()=>{
 	triggerMail().finally(e=>{
 				console.log("Request processed");
 			}).then(resolve=>{
-					publishQuene.denque();																//Write a feature here to delete the data from the program
-					trigger();		
+				resolve();
+			}).catch(reject=>{
+				console.log("Error Occurred   " , reject);
+				return;
 			})
 }
 
-
 const post = (req , res)=>{
-	const second = getSeconds(req.query.date);
+	const milliSecond = getMilliSeconds(new Date(req.query.date));
+	console.log("First trigger in  : ", milliSecond);
 	//get all the queries
 	const info = new DB({
 		sender  : req.query.sender,
@@ -67,7 +82,7 @@ const post = (req , res)=>{
 		sub     : req.query.sub,
 		message : req.query.message,
 		date 	: req.query.date,
-		ms 		:  second,
+		ms 		:  milliSecond,
 		status  : 200
 	});
 
@@ -75,7 +90,7 @@ const post = (req , res)=>{
 		if(!err){
 			console.log("Data saved " , info);
 			res.json(info);
-			// refreshQuene();
+			refreshQuene();
 		}else{
 			console.log(err);
 			res.json({err:  "Error Occcured While sending the data ", status : 400});

@@ -15,7 +15,7 @@ function Quene(){
 
 			var item = obj[head];
 			delete obj[head];
-
+			console.log("Deleted Quene" , item);
 			head++;
 
 			//Check if the quene is empty
@@ -33,14 +33,13 @@ function Quene(){
 			for(var i in obj){
 				results.push(obj[i]);
 			}
-
 			return results;
 		},
-		isEmpty:()=>{
-			if(head === tail)
-				return true;
-			else
-				return false
+		isEmpty: ()=>{
+			return head === tail;
+		},
+		status : ()=>{
+			console.log("Quene Status : " , head , tail , obj);
 		}
 	}
 }
