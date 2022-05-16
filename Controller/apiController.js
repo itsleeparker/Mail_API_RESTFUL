@@ -2,6 +2,7 @@
 const DB = require("../db").db;
 const data  = require("../Features/Datahandler").data;
 const publishQuene = require("../Features/Quene").quene;
+const mail = require("../Features/email").mailer;
 const dayjs = require("dayjs");
 var utc = require('dayjs/plugin/utc')
 var timezone = require('dayjs/plugin/timezone') // dependent on utc plugin
@@ -47,16 +48,20 @@ const triggerMail = ()=>{
 	return new Promise((resolve  , reject)=>{
 	  if(publishQuene.size() <=0){
 	  	reject(new Error("Qune is empty"));
-	  }			
-  	  var quene = publishQuene.denque();
+	  }
+	  var count = 0 ;			
+  	  var {_id , date  , message , sub , sender , rec} = publishQuene.denque();
+  	  const timeout = getMilliSeconds(new Date(date));
+	  console.log(`trigger in  ${count}: `, timeout);
   	  setTimeout(()=>{
-  	  	console.log(`${quene.message}`);		//Replace this with mailer
-  	  	if(deleteDb(quene._id)){
+  	  	mail(sender  , rec , sub  , message);		//Replace this with mailer
+  	  	if(deleteDb(_id)){
   	  		reject(new Error("Error While deleting the data"));
   	  	}else{
+  	  		count ++ ;
 			resolve(trigger);					//Problem resolved
   	  	}
-  	  },quene.ms);
+  	  },timeout);
 	})
 }
 
@@ -73,8 +78,6 @@ const trigger = ()=>{
 }
 
 const post = (req , res)=>{
-	const milliSecond = getMilliSeconds(new Date(req.query.date));
-	console.log("First trigger in  : ", milliSecond);
 	//get all the queries
 	const info = new DB({
 		sender  : req.query.sender,
@@ -82,7 +85,6 @@ const post = (req , res)=>{
 		sub     : req.query.sub,
 		message : req.query.message,
 		date 	: req.query.date,
-		ms 		:  milliSecond,
 		status  : 200
 	});
 
